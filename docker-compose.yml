@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: reemote-postgres
+    environment:
+      POSTGRES_USER: reemote
+      POSTGRES_PASSWORD: reemote
+      POSTGRES_DB: reemote
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reemote"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: reemote-backend
+    environment:
+      SERVER_PORT: 8443
+      SERVER_HOST: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: reemote
+      DB_PASSWORD: reemote
+      DB_NAME: reemote
+      DB_SSL_MODE: disable
+      JWT_SECRET: dev-secret-key-min-32-chars-long-change-this
+      ENCRYPTION_KEY: dev-encryption-key-min-32-chars-long-change-this
+      LOG_LEVEL: debug
+      ENV: development
+      REQUIRE_TLS: "false"
+    ports:
+      - "8443:8443"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+    command: ./reemote-server
+
+volumes:
+  postgres_data:
