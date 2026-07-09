@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "env": {
+    "DATABASE_URL": {
+      "description": "Neon PostgreSQL connection string",
+      "required": true
+    },
+    "JWT_SECRET": {
+      "description": "JWT signing secret (min 32 chars)",
+      "required": true
+    },
+    "ENCRYPTION_KEY": {
+      "description": "Session encryption key (min 32 chars)",
+      "required": true
+    },
+    "LIBVIRT_URI": {
+      "description": "Libvirt connection URI",
+      "default": "qemu:///system"
+    },
+    "LOG_LEVEL": {
+      "description": "Logging level",
+      "default": "info"
+    }
+  },
+  "functions": {
+    "api/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
+  "redirects": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "/api/v1/:path*"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
