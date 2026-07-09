@@ -12,6 +12,7 @@ import (
 
 	"github.com/lanraeee/reemote/backend/config"
 	"github.com/lanraeee/reemote/backend/internal/auth"
+	"github.com/lanraeee/reemote/backend/internal/console"
 	"github.com/lanraeee/reemote/backend/internal/database"
 	"github.com/lanraeee/reemote/backend/internal/libvirt"
 	"github.com/lanraeee/reemote/backend/internal/repository"
@@ -67,6 +68,15 @@ func main() {
 	// Initialize services
 	userService := service.NewUserService(userRepo, passwordManager, totpManager)
 	vmService := service.NewVMService(vmRepo, domainManager, eventMonitor)
+	permRepo := repository.NewPermissionRepository(db)
+	permService := service.NewPermissionService(permRepo)
+
+	// Initialize console management
+	consoleManager := console.NewConsoleManager()
+	consoleHandler := console.NewWebSocketConsoleHandler(consoleManager)
+
+	// Start console cleanup routine
+	go consoleHandler.StartCleanupRoutine(5*time.Minute, 30*time.Minute)
 
 	// Initialize router
 	router := http.NewServeMux()
@@ -85,6 +95,12 @@ func main() {
 	router.HandleFunc("/api/v1/vms/{id}", handleGetVM(vmService, tokenManager))
 	router.HandleFunc("PUT /api/v1/vms/{id}", handleUpdateVM(vmService, tokenManager))
 	router.HandleFunc("DELETE /api/v1/vms/{id}", handleDeleteVM(vmService, tokenManager))
+
+	// Console endpoints (Phase 3)
+	router.HandleFunc("POST /api/v1/vms/{vm_id}/console/connect", handleConsoleConnect(consoleHandler, tokenManager, permService))
+	router.HandleFunc("POST /api/v1/console/{session_id}/message", handleConsoleMessage(consoleHandler, tokenManager))
+	router.HandleFunc("POST /api/v1/console/{session_id}/disconnect", handleConsoleDisconnect(consoleHandler, tokenManager))
+	router.HandleFunc("GET /api/v1/console/{session_id}/stats", handleConsoleStats(consoleManager, tokenManager))
 
 	// Configure server
 	server := &http.Server{
@@ -392,6 +408,85 @@ func validateAuth(w http.ResponseWriter, r *http.Request, tokenManager *auth.Tok
 	}
 
 	return claims
+}
+
+func handleConsoleConnect(consoleHandler *console.WebSocketConsoleHandler, tokenManager *auth.TokenManager, permService *service.PermissionService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		claims := validateAuth(w, r, tokenManager)
+		if claims == nil {
+			return
+		}
+
+		vmID := r.PathValue("vm_id")
+		hasAccess, err := permService.CheckAccess(r.Context(), claims.UserID, vmID, "view")
+		if err != nil || !hasAccess {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		consoleHandler.HandleConnect(w, r)
+	}
+}
+
+func handleConsoleMessage(consoleHandler *console.WebSocketConsoleHandler, tokenManager *auth.TokenManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		claims := validateAuth(w, r, tokenManager)
+		if claims == nil {
+			return
+		}
+
+		consoleHandler.HandleMessage(w, r)
+	}
+}
+
+func handleConsoleDisconnect(consoleHandler *console.WebSocketConsoleHandler, tokenManager *auth.TokenManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		claims := validateAuth(w, r, tokenManager)
+		if claims == nil {
+			return
+		}
+
+		consoleHandler.HandleDisconnect(w, r)
+	}
+}
+
+func handleConsoleStats(consoleManager *console.ConsoleManager, tokenManager *auth.TokenManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		claims := validateAuth(w, r, tokenManager)
+		if claims == nil {
+			return
+		}
+
+		sessionID := r.PathValue("session_id")
+		session, err := consoleManager.GetSession(sessionID)
+		if err != nil {
+			http.Error(w, "Session not found", http.StatusNotFound)
+			return
+		}
+
+		stats := session.GetStats()
+		writeJSON(w, http.StatusOK, stats)
+	}
 }
 
 func parseJSON(r *http.Request, v interface{}) error {
