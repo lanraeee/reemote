@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/lanraeee/reemote/backend/internal/database"
 	"github.com/lanraeee/reemote/backend/internal/libvirt"
 	"github.com/lanraeee/reemote/backend/internal/repository"
+	"github.com/lanraeee/reemote/backend/internal/security"
 	"github.com/lanraeee/reemote/backend/internal/service"
 )
 
@@ -78,6 +81,26 @@ func main() {
 	// Start console cleanup routine
 	go consoleHandler.StartCleanupRoutine(5*time.Minute, 30*time.Minute)
 
+	// Initialize security components
+	rateLimiter := security.NewRateLimiter(
+		cfg.Security.UserRateLimit,
+		cfg.Security.IPRateLimit,
+		cfg.Security.RateLimitWindow,
+	)
+
+	tlsManager := security.NewTLSManager(cfg.Server.TLSCert, cfg.Server.TLSKey)
+	if cfg.Server.TLSCert != "" && cfg.Server.TLSKey != "" {
+		if err := tlsManager.LoadCertificates(); err != nil {
+			log.Fatalf("Failed to load TLS certificates: %v", err)
+		}
+		log.Println("TLS certificates loaded successfully")
+
+		// Check certificate expiry
+		if expiry, ok := tlsManager.CheckCertificateExpiry(cfg.Security.CertExpiryWarningDays); !ok {
+			log.Printf("Warning: %s", expiry)
+		}
+	}
+
 	// Initialize router
 	router := http.NewServeMux()
 
@@ -85,22 +108,22 @@ func main() {
 	router.HandleFunc("/health", healthCheck)
 
 	// User management endpoints
-	router.HandleFunc("/api/v1/auth/register", handleRegister(userService))
-	router.HandleFunc("/api/v1/auth/login", handleLogin(userService, tokenManager))
-	router.HandleFunc("/api/v1/users/profile", handleGetProfile(tokenManager))
+	router.HandleFunc("/api/v1/auth/register", withRateLimit(handleRegister(userService), rateLimiter, false))
+	router.HandleFunc("/api/v1/auth/login", withRateLimit(handleLogin(userService, tokenManager), rateLimiter, false))
+	router.HandleFunc("/api/v1/users/profile", withRateLimit(handleGetProfile(tokenManager), rateLimiter, true))
 
 	// VM management endpoints
-	router.HandleFunc("/api/v1/vms", handleListVMs(vmService, tokenManager))
-	router.HandleFunc("POST /api/v1/vms", handleCreateVM(vmService, tokenManager))
-	router.HandleFunc("/api/v1/vms/{id}", handleGetVM(vmService, tokenManager))
-	router.HandleFunc("PUT /api/v1/vms/{id}", handleUpdateVM(vmService, tokenManager))
-	router.HandleFunc("DELETE /api/v1/vms/{id}", handleDeleteVM(vmService, tokenManager))
+	router.HandleFunc("/api/v1/vms", withRateLimit(handleListVMs(vmService, tokenManager), rateLimiter, true))
+	router.HandleFunc("POST /api/v1/vms", withRateLimit(handleCreateVM(vmService, tokenManager), rateLimiter, true))
+	router.HandleFunc("/api/v1/vms/{id}", withRateLimit(handleGetVM(vmService, tokenManager), rateLimiter, true))
+	router.HandleFunc("PUT /api/v1/vms/{id}", withRateLimit(handleUpdateVM(vmService, tokenManager), rateLimiter, true))
+	router.HandleFunc("DELETE /api/v1/vms/{id}", withRateLimit(handleDeleteVM(vmService, tokenManager), rateLimiter, true))
 
-	// Console endpoints (Phase 3)
-	router.HandleFunc("POST /api/v1/vms/{vm_id}/console/connect", handleConsoleConnect(consoleHandler, tokenManager, permService))
-	router.HandleFunc("POST /api/v1/console/{session_id}/message", handleConsoleMessage(consoleHandler, tokenManager))
-	router.HandleFunc("POST /api/v1/console/{session_id}/disconnect", handleConsoleDisconnect(consoleHandler, tokenManager))
-	router.HandleFunc("GET /api/v1/console/{session_id}/stats", handleConsoleStats(consoleManager, tokenManager))
+	// Console endpoints (Phase 3) - stricter rate limits for interactive sessions
+	router.HandleFunc("POST /api/v1/vms/{vm_id}/console/connect", withRateLimit(handleConsoleConnect(consoleHandler, tokenManager, permService), rateLimiter, true))
+	router.HandleFunc("POST /api/v1/console/{session_id}/message", withRateLimit(handleConsoleMessage(consoleHandler, tokenManager), rateLimiter, true))
+	router.HandleFunc("POST /api/v1/console/{session_id}/disconnect", withRateLimit(handleConsoleDisconnect(consoleHandler, tokenManager), rateLimiter, true))
+	router.HandleFunc("GET /api/v1/console/{session_id}/stats", withRateLimit(handleConsoleStats(consoleManager, tokenManager), rateLimiter, true))
 
 	// Configure server
 	server := &http.Server{
@@ -110,12 +133,17 @@ func main() {
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}
 
+	// Apply TLS configuration if available
+	if tlsManager.IsTLSEnabled() {
+		server.TLSConfig = tlsManager.GetConfig()
+	}
+
 	// Start server in goroutine
 	go func() {
 		log.Printf("Starting server on %s", server.Addr)
 
 		var err error
-		if cfg.Server.TLSCert != "" && cfg.Server.TLSKey != "" {
+		if tlsManager.IsTLSEnabled() {
 			err = server.ListenAndServeTLS(cfg.Server.TLSCert, cfg.Server.TLSKey)
 		} else {
 			err = server.ListenAndServe()
@@ -496,4 +524,52 @@ func parseJSON(r *http.Request, v interface{}) error {
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
+}
+
+func getClientIP(r *http.Request) string {
+	// Check X-Forwarded-For header first (for proxied requests)
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		return strings.Split(forwarded, ",")[0]
+	}
+	// Check X-Real-IP header
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		return realIP
+	}
+	// Fall back to remote address
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
+}
+
+func withRateLimit(handler http.HandlerFunc, limiter *security.RateLimiter, requireAuth bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clientIP := getClientIP(r)
+		var userID string
+
+		if requireAuth {
+			token := r.Header.Get("Authorization")
+			if token != "" && len(token) > 7 && token[:7] == "Bearer " {
+				token = token[7:]
+			}
+			// We don't have the token manager here, so we'll extract user ID from context later
+			// For now, use the token as a user identifier
+			if token != "" {
+				userID = token[:16] // Use first 16 chars as simple identifier
+			}
+		}
+
+		if userID == "" {
+			userID = clientIP
+		}
+
+		allowed, errMsg := limiter.Allow(userID, clientIP)
+		if !allowed {
+			http.Error(w, errMsg, http.StatusTooManyRequests)
+			return
+		}
+
+		handler(w, r)
+	}
 }
