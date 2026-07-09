@@ -64,11 +64,15 @@ type LibvirtConfig struct {
 }
 
 type SecurityConfig struct {
-	AllowedCORSOrigins []string
-	EncryptionKey      string
-	BCryptCost         int
-	TLSMinVersion      string
-	RequireTLS         bool
+	AllowedCORSOrigins    []string
+	EncryptionKey         string
+	BCryptCost            int
+	TLSMinVersion         string
+	RequireTLS            bool
+	UserRateLimit         int
+	IPRateLimit           int
+	RateLimitWindow       time.Duration
+	CertExpiryWarningDays int
 }
 
 type LoggingConfig struct {
@@ -122,11 +126,15 @@ func Load() (*Config, error) {
 			MaxConnectionPooling: getEnvInt("LIBVIRT_MAX_POOLING", 10),
 		},
 		Security: SecurityConfig{
-			AllowedCORSOrigins: []string{getEnv("ALLOWED_CORS_ORIGINS", "http://localhost:3000")},
-			EncryptionKey:      getEnv("ENCRYPTION_KEY", ""),
-			BCryptCost:         getEnvInt("BCRYPT_COST", 12),
-			TLSMinVersion:      getEnv("TLS_MIN_VERSION", "1.3"),
-			RequireTLS:         getEnvBool("REQUIRE_TLS", true),
+			AllowedCORSOrigins:    []string{getEnv("ALLOWED_CORS_ORIGINS", "http://localhost:3000")},
+			EncryptionKey:         getEnv("ENCRYPTION_KEY", ""),
+			BCryptCost:            getEnvInt("BCRYPT_COST", 12),
+			TLSMinVersion:         getEnv("TLS_MIN_VERSION", "1.3"),
+			RequireTLS:            getEnvBool("REQUIRE_TLS", true),
+			UserRateLimit:         getEnvInt("SECURITY_USER_RATELIMIT", 100),
+			IPRateLimit:           getEnvInt("SECURITY_IP_RATELIMIT", 1000),
+			RateLimitWindow:       getEnvDuration("SECURITY_RATELIMIT_WINDOW", time.Minute),
+			CertExpiryWarningDays: getEnvInt("CERT_EXPIRY_WARNING_DAYS", 30),
 		},
 		Logging: LoggingConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
