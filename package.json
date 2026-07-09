@@ -5,7 +5,7 @@
   "main": "api/index.js",
   "scripts": {
     "dev:api": "tsc --watch",
-    "build": "cd frontend && npm run build",
+    "build": "cd frontend && npm install && npm run build",
     "start": "node api/dist/index.js",
     "test": "jest"
   },
