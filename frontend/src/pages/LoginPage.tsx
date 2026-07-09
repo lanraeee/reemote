@@ -56,26 +56,33 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4 py-8 sm:px-6">
       <div className="w-full max-w-md">
         {/* Logo / Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Reemote</h1>
-          <p className="text-gray-400">Remote Desktop VM Management</p>
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-3">
+            Reemote
+          </h1>
+          <p className="text-slate-400 text-sm sm:text-base">Remote Desktop VM Management</p>
         </div>
 
         {/* Login Card */}
-        <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg shadow-xl p-8">
+        <form onSubmit={handleSubmit} className="bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 border border-slate-700">
           {/* Error Message */}
           {(error || localError) && (
-            <div className="mb-4 p-4 bg-red-900 border border-red-700 rounded-lg text-red-200 text-sm">
-              {error || localError}
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm animate-slide-in">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span>{error || localError}</span>
+              </div>
             </div>
           )}
 
           {/* Email Field */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+          <div className="mb-5">
+            <label className="block text-sm font-semibold text-slate-200 mb-2">
               Email Address
             </label>
             <input
@@ -85,14 +92,14 @@ export default function LoginPage() {
               onChange={handleChange}
               placeholder="user@example.com"
               disabled={isLoading}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none disabled:opacity-50"
+              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none disabled:opacity-50 transition-all duration-200"
               required
             />
           </div>
 
           {/* Password Field */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+          <div className="mb-5">
+            <label className="block text-sm font-semibold text-slate-200 mb-2">
               Password
             </label>
             <input
@@ -102,15 +109,15 @@ export default function LoginPage() {
               onChange={handleChange}
               placeholder="••••••••"
               disabled={isLoading}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none disabled:opacity-50"
+              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none disabled:opacity-50 transition-all duration-200"
               required
             />
           </div>
 
           {/* TOTP Field */}
           {showTOTP && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+            <div className="mb-5 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg animate-slide-in">
+              <label className="block text-sm font-semibold text-slate-200 mb-2">
                 2FA Code
               </label>
               <input
@@ -121,10 +128,13 @@ export default function LoginPage() {
                 placeholder="000000"
                 maxLength={6}
                 disabled={isLoading}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none disabled:opacity-50"
+                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none disabled:opacity-50 transition-all duration-200"
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Enter the 6-digit code from your authenticator app
+              <p className="text-xs text-blue-300 mt-2 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zm-11-1a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" />
+                </svg>
+                Enter the 6-digit code from your authenticator
               </p>
             </div>
           )}
@@ -133,7 +143,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-6 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full mt-8 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-slate-500 disabled:to-slate-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/50"
           >
             {isLoading ? (
               <>
@@ -149,18 +159,18 @@ export default function LoginPage() {
           </button>
 
           {/* Footer */}
-          <p className="text-center text-sm text-gray-400 mt-6">
+          <p className="text-center text-xs sm:text-sm text-slate-400 mt-6">
             Don't have an account?{' '}
-            <a href="#" className="text-blue-400 hover:text-blue-300 font-medium">
+            <a href="#" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
               Contact your administrator
             </a>
           </p>
         </form>
 
-        {/* Demo Credentials */}
-        <div className="mt-8 p-4 bg-gray-800 rounded-lg text-center">
-          <p className="text-xs text-gray-400">
-            Demo: Use credentials provided by your administrator
+        {/* Info Box */}
+        <div className="mt-6 sm:mt-8 p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-center">
+          <p className="text-xs text-slate-400">
+            💡 Demo credentials are provided by your administrator
           </p>
         </div>
       </div>

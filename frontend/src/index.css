@@ -19,6 +19,46 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+/* Custom color variables */
+:root {
+  --primary: #3b82f6;
+  --primary-dark: #1e40af;
+  --accent: #8b5cf6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+/* Form styling */
+input, textarea, select {
+  @apply transition-all duration-200;
+}
+
+input:focus, textarea:focus, select:focus {
+  @apply outline-none ring-2 ring-offset-2 ring-blue-500;
+}
+
+/* Button styling */
+button {
+  @apply transition-all duration-200 font-medium;
+}
+
+button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* Card styling */
+.card {
+  @apply bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100;
+}
+
+/* Badge styling */
+.badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
 }
 
 /* VNC Canvas Styling */
@@ -26,6 +66,7 @@ canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   border-radius: 0.5rem;
+  @apply max-w-full h-auto;
 }
 
 /* Scrollbar Styling */
@@ -35,15 +76,45 @@ canvas {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #f1f5f9;
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #cbd5e1;
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #94a3b8;
+}
+
+/* Animation utilities */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInUp 0.3s ease-out;
+}
+
+/* Loading skeleton */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
