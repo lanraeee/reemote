@@ -6,15 +6,22 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lanraeee/reemote/backend/internal/libvirt"
 	"github.com/lanraeee/reemote/backend/internal/repository"
 )
 
 type VMService struct {
-	vmRepo *repository.VMRepository
+	vmRepo          *repository.VMRepository
+	domainManager   *libvirt.DomainManager
+	eventMonitor    *libvirt.EventMonitor
 }
 
-func NewVMService(vmRepo *repository.VMRepository) *VMService {
-	return &VMService{vmRepo: vmRepo}
+func NewVMService(vmRepo *repository.VMRepository, domainManager *libvirt.DomainManager, eventMonitor *libvirt.EventMonitor) *VMService {
+	return &VMService{
+		vmRepo:        vmRepo,
+		domainManager: domainManager,
+		eventMonitor:  eventMonitor,
+	}
 }
 
 type CreateVMRequest struct {

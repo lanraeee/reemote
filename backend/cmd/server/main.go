@@ -13,6 +13,7 @@ import (
 	"github.com/lanraeee/reemote/backend/config"
 	"github.com/lanraeee/reemote/backend/internal/auth"
 	"github.com/lanraeee/reemote/backend/internal/database"
+	"github.com/lanraeee/reemote/backend/internal/libvirt"
 	"github.com/lanraeee/reemote/backend/internal/repository"
 	"github.com/lanraeee/reemote/backend/internal/service"
 )
@@ -41,9 +42,31 @@ func main() {
 	passwordManager := auth.NewPasswordManager(cfg.Security.BCryptCost, cfg.Auth.PasswordMinLength)
 	totpManager := auth.NewTOTPManager(cfg.Auth.TOTPWindowSize)
 
+	// Initialize libvirt components
+	libvirtClient := libvirt.NewLibvirtClient(
+		cfg.Libvirt.URI,
+		cfg.Libvirt.MaxConnectionPooling,
+		cfg.Libvirt.ConnectionTimeout,
+		cfg.Libvirt.CircuitBreakerLimit,
+		cfg.Libvirt.CircuitBreakerReset,
+	)
+	defer libvirtClient.Close()
+
+	log.Println("Initializing libvirt connection...")
+	if err := libvirtClient.Ping(); err != nil {
+		log.Printf("Warning: Libvirt connection failed: %v. Running in degraded mode.", err)
+	}
+
+	domainManager := libvirt.NewDomainManager(libvirtClient)
+	eventBus := libvirt.NewEventBus(100)
+	eventMonitor := libvirt.NewEventMonitor(eventBus, domainManager, 30*time.Second)
+
+	// Start event monitoring in background
+	go eventMonitor.Start(context.Background())
+
 	// Initialize services
 	userService := service.NewUserService(userRepo, passwordManager, totpManager)
-	vmService := service.NewVMService(vmRepo)
+	vmService := service.NewVMService(vmRepo, domainManager, eventMonitor)
 
 	// Initialize router
 	router := http.NewServeMux()
@@ -93,6 +116,17 @@ func main() {
 	<-sigChan
 
 	log.Println("Shutting down server...")
+
+	// Stop event monitoring
+	if err := eventMonitor.Stop(); err != nil {
+		log.Printf("Event monitor shutdown error: %v", err)
+	}
+
+	// Stop event bus
+	if err := eventBus.Stop(); err != nil {
+		log.Printf("Event bus shutdown error: %v", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
