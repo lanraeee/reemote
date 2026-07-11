@@ -23,7 +23,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await login(formData.email, formData.password, formData.totpCode || undefined);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: any) {
       if (err.response?.status === 400 && formData.totpCode === '') {
         setShowTOTP(true);

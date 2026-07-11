@@ -6,7 +6,7 @@ interface LayoutProps { children: React.ReactNode; }
 
 const navItems = [
   {
-    to: '/', label: 'Dashboard',
+    to: '/dashboard', label: 'Dashboard',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -30,7 +30,7 @@ export default function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleLogout = () => { logout(); navigate('/'); };
   const closeSidebar = () => setSidebarOpen(false);
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? 'RM';
