@@ -27,7 +27,7 @@ export function generateToken(
       isAdmin,
     },
     secret,
-    { expiresIn }
+    { expiresIn } as { expiresIn: any }
   );
 }
 
