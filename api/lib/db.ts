@@ -5,7 +5,7 @@ let pool: Pool;
 export async function getConnection(): Promise<PoolClient> {
   if (!pool) {
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: process.env.DATABASE_URL || process.env.reemotedb_DATABASE_URL,
       ssl: { rejectUnauthorized: false },
       max: 5,
       idleTimeoutMillis: 30000,
