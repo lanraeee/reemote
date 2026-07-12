@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../stores/auth';
+import apiClient from '../services/api';
 
 const TABS = [
   { id: 'profile',     label: 'Profile',     icon: '👤' },
   { id: 'security',    label: 'Security',    icon: '🔐' },
   { id: 'preferences', label: 'Preferences', icon: '⚙️' },
+  { id: 'email',       label: 'Email Tools', icon: '✉️' },
 ];
 
 function SectionCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -30,6 +32,222 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 const inputCls = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/15 outline-none transition-all duration-200 text-sm";
+
+type ValidationResult = {
+  valid: boolean;
+  email: string;
+  domain?: string;
+  checks: { format: boolean; mx: boolean; disposable: boolean };
+  mx_records?: { exchange: string; priority: number }[];
+  reason?: string | null;
+} | null;
+
+function EmailToolsPanel({ isAdmin }: { isAdmin: boolean }) {
+  const [validateEmail, setValidateEmail] = useState('');
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult>(null);
+  const [validateError, setValidateError] = useState('');
+
+  const [sendTo, setSendTo] = useState('');
+  const [sendSubject, setSendSubject] = useState('');
+  const [sendBody, setSendBody] = useState('');
+  const [sendReplyTo, setSendReplyTo] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ success: boolean; message?: string } | null>(null);
+
+  async function handleValidate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validateEmail.trim()) return;
+    setValidating(true);
+    setValidationResult(null);
+    setValidateError('');
+    try {
+      const result = await apiClient.validateEmail(validateEmail.trim());
+      setValidationResult(result);
+    } catch (err: any) {
+      setValidateError(err?.response?.data?.error || 'Validation failed');
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!sendTo.trim() || !sendSubject.trim() || !sendBody.trim()) return;
+    setSending(true);
+    setSendResult(null);
+    const recipients = sendTo.split(',').map(e => e.trim()).filter(Boolean);
+    try {
+      const result = await apiClient.sendEmail(recipients, sendSubject.trim(), sendBody.trim(), undefined, sendReplyTo.trim() || undefined);
+      setSendResult({ success: true, message: `Sent to ${result.recipients} recipient${result.recipients !== 1 ? 's' : ''}` });
+      setSendTo(''); setSendSubject(''); setSendBody(''); setSendReplyTo('');
+    } catch (err: any) {
+      setSendResult({ success: false, message: err?.response?.data?.error || 'Send failed' });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const checkIcon = (ok: boolean) =>
+    ok ? (
+      <span className="flex items-center gap-1 text-emerald-600 font-medium text-xs">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+        Pass
+      </span>
+    ) : (
+      <span className="flex items-center gap-1 text-red-500 font-medium text-xs">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+        Fail
+      </span>
+    );
+
+  return (
+    <div className="space-y-5 animate-slide-in">
+      {/* Validator */}
+      <SectionCard
+        title="Email Validator"
+        icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+      >
+        <form onSubmit={handleValidate} className="space-y-4">
+          <Field label="Email Address">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={validateEmail}
+                onChange={e => setValidateEmail(e.target.value)}
+                placeholder="user@example.com"
+                className={`${inputCls} flex-1`}
+              />
+              <button
+                type="submit"
+                disabled={validating || !validateEmail.trim()}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors whitespace-nowrap"
+              >
+                {validating ? 'Checking…' : 'Validate'}
+              </button>
+            </div>
+          </Field>
+
+          {validateError && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{validateError}</p>
+          )}
+
+          {validationResult && (
+            <div className={`rounded-xl border p-4 ${validationResult.valid ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${validationResult.valid ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                  {validationResult.valid
+                    ? <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                    : <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  }
+                </div>
+                <p className={`text-sm font-semibold ${validationResult.valid ? 'text-emerald-800' : 'text-red-800'}`}>
+                  {validationResult.valid ? 'Valid email address' : 'Invalid email address'}
+                </p>
+              </div>
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">Format check</span>
+                  {checkIcon(validationResult.checks.format)}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">MX records (mail server)</span>
+                  {checkIcon(validationResult.checks.mx)}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">Not disposable</span>
+                  {checkIcon(validationResult.checks.disposable)}
+                </div>
+              </div>
+              {validationResult.reason && (
+                <p className="text-xs text-red-700 mt-2">{validationResult.reason}</p>
+              )}
+              {validationResult.mx_records && validationResult.mx_records.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-emerald-200">
+                  <p className="text-xs font-semibold text-slate-600 mb-1.5">MX Records</p>
+                  {validationResult.mx_records.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                      <span className="font-mono bg-white/60 px-1.5 py-0.5 rounded">{r.priority}</span>
+                      <span className="font-mono">{r.exchange}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </form>
+      </SectionCard>
+
+      {/* Sender — admin only */}
+      {isAdmin ? (
+        <SectionCard
+          title="Send Email"
+          icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
+        >
+          <form onSubmit={handleSend} className="space-y-4">
+            <Field label="To" hint="Comma-separate multiple recipients (max 50)">
+              <input
+                type="text"
+                value={sendTo}
+                onChange={e => setSendTo(e.target.value)}
+                placeholder="alice@example.com, bob@example.com"
+                className={inputCls}
+                required
+              />
+            </Field>
+            <Field label="Reply-To (optional)">
+              <input
+                type="email"
+                value={sendReplyTo}
+                onChange={e => setSendReplyTo(e.target.value)}
+                placeholder="support@yourdomain.com"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Subject">
+              <input
+                type="text"
+                value={sendSubject}
+                onChange={e => setSendSubject(e.target.value)}
+                placeholder="Your subject line"
+                className={inputCls}
+                required
+              />
+            </Field>
+            <Field label="Message Body">
+              <textarea
+                value={sendBody}
+                onChange={e => setSendBody(e.target.value)}
+                placeholder="Write your message here…"
+                rows={6}
+                className={`${inputCls} resize-none`}
+                required
+              />
+            </Field>
+
+            {sendResult && (
+              <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${sendResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                {sendResult.message}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={sending || !sendTo.trim() || !sendSubject.trim() || !sendBody.trim()}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-600/20"
+            >
+              {sending ? 'Sending…' : 'Send email'}
+            </button>
+          </form>
+        </SectionCard>
+      ) : (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-500">
+          Email sending is available to administrators only.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { user } = useAuthStore();
@@ -205,6 +423,11 @@ export default function SettingsPage() {
             Save Preferences
           </button>
         </div>
+      )}
+
+      {/* Email Tools */}
+      {activeTab === 'email' && (
+        <EmailToolsPanel isAdmin={user?.isAdmin ?? false} />
       )}
     </div>
   );

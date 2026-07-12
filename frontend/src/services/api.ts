@@ -4,7 +4,7 @@ class APIClient {
   private client: AxiosInstance;
   private baseURL: string;
 
-  constructor(baseURL: string = 'http://localhost:8443/api/v1') {
+  constructor(baseURL: string = '/api/v1') {
     this.baseURL = baseURL;
     this.client = axios.create({
       baseURL,
@@ -105,6 +105,16 @@ class APIClient {
 
   async disconnectConsole(sessionId: string) {
     const response = await this.post(`/console/${sessionId}/disconnect`);
+    return response.data;
+  }
+
+  async validateEmail(email: string) {
+    const response = await this.post('/email/validate', { email });
+    return response.data;
+  }
+
+  async sendEmail(to: string | string[], subject: string, body: string, html?: string, replyTo?: string) {
+    const response = await this.post('/email/send', { to, subject, body, html, replyTo });
     return response.data;
   }
 }

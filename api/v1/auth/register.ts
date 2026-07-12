@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import * as bcrypt from 'bcryptjs';
 import { executeQuerySingle } from '../../lib/db';
 import { generateToken } from '../../lib/auth';
+import { sendEmail, welcomeEmailHtml } from '../../lib/email';
 
 const PASSWORD_MIN_LENGTH = 12;
 const BCRYPT_COST = 12;
@@ -79,6 +80,13 @@ export default async function handler(
       result.is_admin,
       '7d'
     );
+
+    // Send welcome email (non-blocking — don't fail registration if email fails)
+    sendEmail({
+      to: result.email,
+      subject: 'Welcome to Reemote',
+      html: welcomeEmailHtml(result.email),
+    }).catch(err => console.error('Welcome email failed:', err));
 
     return res.status(201).json({
       user_id: result.id,
