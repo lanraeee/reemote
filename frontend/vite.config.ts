@@ -7,5 +7,11 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8443'
     }
-  }
+  },
+  build: {
+    target: 'esnext',
+  },
+  optimizeDeps: {
+    exclude: ['@novnc/novnc'],
+  },
 })

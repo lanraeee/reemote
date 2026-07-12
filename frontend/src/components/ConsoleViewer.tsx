@@ -32,8 +32,8 @@ export default function ConsoleViewer({ vmId, sessionId, vncHost, vncPort, vncPa
     async function connect() {
       try {
         // Dynamic import so vite can tree-shake it properly
-        const RFBModule = await import('@novnc/novnc/core/rfb.js');
-        const RFB = RFBModule.default;
+        const RFBModule = await import('@novnc/novnc');
+        const RFB = RFBModule.default ?? (RFBModule as any);
 
         if (!screenRef.current) return;
 
