@@ -1,207 +1,239 @@
 import React, { useEffect, useRef, useState } from 'react';
-import api from '../services/api';
 
 interface ConsoleViewerProps {
   vmId: string;
   sessionId: string;
+  vncHost: string;
+  vncPort: number;
+  vncPassword?: string;
 }
 
-interface ConsoleStats {
-  bandwidth: number;
-  frames_sent: number;
-  key_events: number;
-  mouse_events: number;
-  uptime: string;
-  bytes_sent: number;
-  bytes_received: number;
-}
+type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
 
-export default function ConsoleViewer({ vmId, sessionId }: ConsoleViewerProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stats, setStats] = useState<ConsoleStats | null>(null);
-  const [isConnected, setIsConnected] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default function ConsoleViewer({ vmId, sessionId, vncHost, vncPort, vncPassword }: ConsoleViewerProps) {
+  const screenRef = useRef<HTMLDivElement>(null);
+  const rfbRef = useRef<any>(null);
+  const [connState, setConnState] = useState<ConnectionState>('connecting');
+  const [statusMsg, setStatusMsg] = useState('Initialising connection…');
+  const [resolution, setResolution] = useState('');
+  const [clipboardText, setClipboardText] = useState('');
+  const [showClipboard, setShowClipboard] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
-  // Load and update stats periodically
   useEffect(() => {
-    const loadStats = async () => {
+    if (!vncHost || !vncPort) {
+      setConnState('error');
+      setStatusMsg('No VNC host or port configured for this VM.');
+      return;
+    }
+
+    let rfb: any;
+
+    async function connect() {
       try {
-        const data = await api.getConsoleStats(sessionId);
-        setStats(data);
+        // Dynamic import so vite can tree-shake it properly
+        const RFBModule = await import('@novnc/novnc/core/rfb.js');
+        const RFB = RFBModule.default;
+
+        if (!screenRef.current) return;
+
+        const url = `ws://${vncHost}:${vncPort}/websockify`;
+
+        rfb = new RFB(screenRef.current, url, {
+          credentials: vncPassword ? { password: vncPassword } : undefined,
+        });
+
+        rfb.scaleViewport = true;
+        rfb.resizeSession = true;
+        rfb.clipViewport = false;
+        rfb.showDotCursor = true;
+
+        rfb.addEventListener('connect', () => {
+          setConnState('connected');
+          setStatusMsg('Connected');
+        });
+
+        rfb.addEventListener('disconnect', (e: any) => {
+          setConnState('disconnected');
+          setStatusMsg(e.detail?.clean ? 'Session ended cleanly' : 'Connection lost — check the VM is running and VNC is accessible');
+        });
+
+        rfb.addEventListener('securityfailure', (e: any) => {
+          setConnState('error');
+          setStatusMsg(`Authentication failed: ${e.detail?.reason || 'wrong password'}`);
+        });
+
+        rfb.addEventListener('credentialsrequired', () => {
+          setConnState('error');
+          setStatusMsg('VNC password required — set it on the VM record');
+        });
+
+        rfb.addEventListener('desktopname', (e: any) => {
+          // We can show the remote desktop name if needed
+        });
+
+        rfb.addEventListener('capabilities', () => {
+          if (rfb._fbWidth && rfb._fbHeight) {
+            setResolution(`${rfb._fbWidth}×${rfb._fbHeight}`);
+          }
+        });
+
+        rfb.addEventListener('clipboard', (e: any) => {
+          setClipboardText(e.detail?.text || '');
+        });
+
+        rfbRef.current = rfb;
       } catch (err: any) {
-        setError(err.message);
+        setConnState('error');
+        setStatusMsg(`Failed to load VNC client: ${err.message}`);
       }
-    };
+    }
 
-    loadStats();
-    const interval = setInterval(loadStats, 2000);
-    return () => clearInterval(interval);
-  }, [sessionId]);
-
-  // Handle keyboard input
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      if (!isConnected || !canvasRef.current?.focus) return;
-
-      try {
-        await api.sendConsoleMessage(sessionId, 'key', {
-          key: e.keyCode,
-          down: true,
-        });
-      } catch (err) {
-        setError('Failed to send key event');
-      }
-    };
-
-    const handleKeyUp = async (e: KeyboardEvent) => {
-      if (!isConnected) return;
-
-      try {
-        await api.sendConsoleMessage(sessionId, 'key', {
-          key: e.keyCode,
-          down: false,
-        });
-      } catch (err) {
-        setError('Failed to send key event');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    connect();
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      if (rfbRef.current) {
+        try { rfbRef.current.disconnect(); } catch {}
+        rfbRef.current = null;
+      }
     };
-  }, [isConnected, sessionId]);
+  }, [vncHost, vncPort, vncPassword]);
 
-  // Handle mouse input
-  const handleMouseMove = async (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isConnected || !canvasRef.current) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    try {
-      await api.sendConsoleMessage(sessionId, 'pointer', {
-        x: Math.round(x),
-        y: Math.round(y),
-        button_mask: e.buttons,
-      });
-    } catch (err) {
-      // Silently fail for mouse moves to avoid spam
+  function sendClipboard() {
+    if (rfbRef.current && clipboardText) {
+      rfbRef.current.clipboardPasteFrom(clipboardText);
     }
-  };
+  }
 
-  const handleMouseDown = async (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isConnected) return;
+  function sendCtrlAltDel() {
+    rfbRef.current?.sendCtrlAltDel();
+  }
 
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    try {
-      await api.sendConsoleMessage(sessionId, 'pointer', {
-        x: Math.round(x),
-        y: Math.round(y),
-        button_mask: e.buttons,
-      });
-    } catch (err) {
-      setError('Failed to send mouse event');
+  function toggleFullscreen() {
+    const el = screenRef.current?.closest('.console-wrapper') as HTMLElement;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen?.();
+      setFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setFullscreen(false);
     }
-  };
+  }
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-  };
+  const stateColor = {
+    connecting:   'text-amber-400',
+    connected:    'text-emerald-400',
+    disconnected: 'text-slate-400',
+    error:        'text-red-400',
+  }[connState];
 
-  const formatBandwidth = (bps: number) => {
-    const mbps = bps / (1024 * 1024);
-    return mbps.toFixed(2) + ' Mbps';
-  };
+  const stateDot = {
+    connecting:   'bg-amber-400 animate-pulse',
+    connected:    'bg-emerald-400 pulse-dot',
+    disconnected: 'bg-slate-500',
+    error:        'bg-red-500',
+  }[connState];
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 text-white">
-      {/* Console Canvas */}
-      <div className="flex-1 flex items-center justify-center p-4 bg-black">
-        <canvas
-          ref={canvasRef}
-          className="border-2 border-gray-700 cursor-none max-w-full max-h-full"
-          width={1024}
-          height={768}
-          onMouseMove={handleMouseMove}
-          onMouseDown={handleMouseDown}
-          tabIndex={0}
-        />
-      </div>
+    <div className="console-wrapper flex flex-col h-full bg-[#0a0a0a]">
 
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-900 px-4 py-2 text-red-100">
-          <p className="text-sm">{error}</p>
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 px-4 py-2 bg-[#111] border-b border-[#222] flex-shrink-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${stateDot}`} />
+          <span className={`text-xs font-medium ${stateColor}`}>{statusMsg}</span>
+          {resolution && <span className="text-xs text-slate-600 ml-2">{resolution}</span>}
         </div>
-      )}
 
-      {/* Status Bar */}
-      <div className="bg-gray-800 border-t border-gray-700 px-4 py-3">
-        <div className="flex justify-between items-center text-sm">
-          <div className="flex gap-6">
-            <div>
-              <span className="text-gray-400">Status:</span>
-              <span className={`ml-2 ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
-                {isConnected ? '● Connected' : '● Disconnected'}
-              </span>
-            </div>
-
-            {stats && (
-              <>
-                <div>
-                  <span className="text-gray-400">Bandwidth:</span>
-                  <span className="ml-2">{formatBandwidth(stats.bandwidth)}</span>
-                </div>
-
-                <div>
-                  <span className="text-gray-400">Frames:</span>
-                  <span className="ml-2">{stats.frames_sent}</span>
-                </div>
-
-                <div>
-                  <span className="text-gray-400">Uptime:</span>
-                  <span className="ml-2">{stats.uptime}</span>
-                </div>
-
-                <div>
-                  <span className="text-gray-400">Sent:</span>
-                  <span className="ml-2">{formatBytes(stats.bytes_sent)}</span>
-                </div>
-
-                <div>
-                  <span className="text-gray-400">Received:</span>
-                  <span className="ml-2">{formatBytes(stats.bytes_received)}</span>
-                </div>
-              </>
-            )}
-          </div>
-
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
-            onClick={() => canvasRef.current?.focus()}
-            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+            onClick={sendCtrlAltDel}
+            disabled={connState !== 'connected'}
+            title="Send Ctrl+Alt+Del"
+            className="px-3 py-1.5 text-xs font-mono bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-40 text-slate-300 rounded border border-[#333] transition-colors"
           >
-            Focus Console
+            Ctrl+Alt+Del
+          </button>
+          <button
+            onClick={() => setShowClipboard(s => !s)}
+            disabled={connState !== 'connected'}
+            title="Clipboard"
+            className="px-3 py-1.5 text-xs bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-40 text-slate-300 rounded border border-[#333] transition-colors"
+          >
+            Clipboard
+          </button>
+          <button
+            onClick={toggleFullscreen}
+            title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            className="px-3 py-1.5 text-xs bg-[#1e1e1e] hover:bg-[#2a2a2a] text-slate-300 rounded border border-[#333] transition-colors"
+          >
+            {fullscreen ? '⊡' : '⊞'}
           </button>
         </div>
       </div>
 
-      {/* Help Text */}
-      <div className="bg-gray-800 px-4 py-2 text-xs text-gray-400 border-t border-gray-700">
-        <p>Click on the console to capture input • Press Esc to release focus</p>
+      {/* Clipboard panel */}
+      {showClipboard && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border-b border-[#222]">
+          <input
+            type="text"
+            value={clipboardText}
+            onChange={e => setClipboardText(e.target.value)}
+            placeholder="Type text to paste into remote session…"
+            className="flex-1 px-3 py-1.5 bg-[#1a1a1a] border border-[#333] rounded text-xs text-white placeholder-slate-600 outline-none focus:border-blue-500"
+          />
+          <button
+            onClick={sendClipboard}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+          >
+            Paste to VM
+          </button>
+        </div>
+      )}
+
+      {/* VNC canvas area */}
+      <div className="flex-1 relative overflow-hidden">
+        {/* Overlay shown while not yet connected */}
+        {connState !== 'connected' && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#050505]">
+            {connState === 'connecting' && (
+              <>
+                <div className="w-12 h-12 rounded-full border-2 border-blue-500 border-t-transparent animate-spin mb-4" />
+                <p className="text-slate-300 text-sm font-medium">Connecting to {vncHost}:{vncPort}…</p>
+                <p className="text-slate-600 text-xs mt-2">Make sure the VM is running and websockify is active on port {vncPort}</p>
+              </>
+            )}
+            {(connState === 'disconnected' || connState === 'error') && (
+              <>
+                <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+                  <svg className="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636l-12.728 12.728M5.636 5.636l12.728 12.728" />
+                  </svg>
+                </div>
+                <p className="text-slate-200 text-sm font-medium mb-1">{connState === 'error' ? 'Connection failed' : 'Disconnected'}</p>
+                <p className="text-slate-500 text-xs text-center max-w-xs px-4">{statusMsg}</p>
+
+                <div className="mt-6 p-4 bg-[#111] rounded-xl border border-[#222] text-xs text-slate-500 max-w-sm">
+                  <p className="text-slate-400 font-semibold mb-2">Requirements</p>
+                  <ul className="space-y-1 list-disc list-inside">
+                    <li>VM must be powered on</li>
+                    <li>VNC server running on the VM (e.g. tigervnc, qemu-kvm)</li>
+                    <li>websockify running: <code className="text-blue-400">websockify {vncPort} localhost:5900</code></li>
+                    <li>Port {vncPort} reachable from browser</li>
+                  </ul>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* noVNC mounts here */}
+        <div
+          ref={screenRef}
+          className="w-full h-full"
+          style={{ cursor: connState === 'connected' ? 'none' : 'default' }}
+        />
       </div>
     </div>
   );

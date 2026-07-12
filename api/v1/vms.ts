@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 os_type, vnc_port, spice_port, created_at, updated_at, metadata
          FROM virtual_machines
          WHERE deleted_at IS NULL
-         ORDER BY created_at DESC
+         ORDER BY name ASC
          LIMIT $1 OFFSET $2`,
         [limit, offset]
       );
@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(403).json({ error: 'Admin access required' });
       }
 
-      const { name, hostname, vcpu, cpu_cores, memory_mb, memory_gb, disk_gb, os_type, metadata } = req.body;
+      const { name, hostname, vcpu, cpu_cores, memory_mb, memory_gb, disk_gb, os_type, vnc_port, metadata } = req.body;
 
       if (!name) {
         return res.status(400).json({ error: 'Name is required' });
@@ -57,10 +57,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const libvirtId = `vm-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${randomUUID().slice(0, 8)}`;
 
+      const resolvedVncPort = vnc_port ? parseInt(vnc_port) : null;
+
       const vm = await executeQuerySingle(
         `INSERT INTO virtual_machines
-         (libvirt_id, name, hostname, vcpu, memory_mb, disk_gb, os_type, metadata, power_state, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'stopped', NOW(), NOW())
+         (libvirt_id, name, hostname, vcpu, memory_mb, disk_gb, os_type, vnc_port, metadata, power_state, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'stopped', NOW(), NOW())
          RETURNING *`,
         [
           libvirtId,
@@ -70,6 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           resolvedMemoryMb,
           resolvedDiskGb,
           resolvedOsType,
+          resolvedVncPort,
           JSON.stringify(metadata || {}),
         ]
       );

@@ -45,20 +45,46 @@ function StatCard({ label, value, sub, gradient, icon }: {
 }
 
 const OS_OPTIONS = [
-  { value: 'linux',   label: 'Linux' },
-  { value: 'ubuntu',  label: 'Ubuntu' },
-  { value: 'debian',  label: 'Debian' },
-  { value: 'centos',  label: 'CentOS' },
-  { value: 'windows', label: 'Windows' },
-  { value: 'freebsd', label: 'FreeBSD' },
-  { value: 'other',   label: 'Other' },
+  { group: 'Ubuntu / Debian',  options: [
+    { value: 'ubuntu-24',  label: 'Ubuntu 24.04 LTS' },
+    { value: 'ubuntu-22',  label: 'Ubuntu 22.04 LTS' },
+    { value: 'ubuntu-20',  label: 'Ubuntu 20.04 LTS' },
+    { value: 'debian-12',  label: 'Debian 12 (Bookworm)' },
+    { value: 'debian-11',  label: 'Debian 11 (Bullseye)' },
+  ]},
+  { group: 'Red Hat / CentOS', options: [
+    { value: 'rhel-9',    label: 'RHEL 9' },
+    { value: 'rhel-8',    label: 'RHEL 8' },
+    { value: 'rocky-9',   label: 'Rocky Linux 9' },
+    { value: 'alma-9',    label: 'AlmaLinux 9' },
+    { value: 'centos-7',  label: 'CentOS 7' },
+    { value: 'fedora-40', label: 'Fedora 40' },
+  ]},
+  { group: 'Windows', options: [
+    { value: 'windows-server-2022', label: 'Windows Server 2022' },
+    { value: 'windows-server-2019', label: 'Windows Server 2019' },
+    { value: 'windows-11',          label: 'Windows 11' },
+    { value: 'windows-10',          label: 'Windows 10' },
+  ]},
+  { group: 'Other Linux', options: [
+    { value: 'arch',     label: 'Arch Linux' },
+    { value: 'kali',     label: 'Kali Linux' },
+    { value: 'opensuse', label: 'openSUSE Leap' },
+    { value: 'alpine',   label: 'Alpine Linux' },
+    { value: 'linux',    label: 'Generic Linux' },
+  ]},
+  { group: 'BSD / Other', options: [
+    { value: 'freebsd-14', label: 'FreeBSD 14' },
+    { value: 'openbsd-7',  label: 'OpenBSD 7' },
+    { value: 'other',      label: 'Other / Unknown' },
+  ]},
 ];
 
 const inputCls = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/15 outline-none transition-all text-sm';
 
 function AddVMModal({ onClose, onCreated }: { onClose: () => void; onCreated: (vm: VM) => void }) {
   const [form, setForm] = useState({
-    name: '', hostname: '', vcpu: '2', memory_gb: '4', disk_gb: '20', os_type: 'linux',
+    name: '', hostname: '', vcpu: '2', memory_gb: '4', disk_gb: '20', os_type: 'ubuntu-22', vnc_port: '6080',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -80,6 +106,7 @@ function AddVMModal({ onClose, onCreated }: { onClose: () => void; onCreated: (v
         memory_mb: Math.round(parseFloat(form.memory_gb) * 1024),
         disk_gb: parseInt(form.disk_gb),
         os_type: form.os_type,
+        vnc_port: form.vnc_port ? parseInt(form.vnc_port) : 6080,
       });
       onCreated(vm.data);
     } catch (err: any) {
@@ -110,15 +137,25 @@ function AddVMModal({ onClose, onCreated }: { onClose: () => void; onCreated: (v
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Hostname / IP</label>
-            <input value={form.hostname} onChange={e => set('hostname', e.target.value)} placeholder="192.168.1.100 or server.example.com" className={inputCls} />
-          </div>
-
-          <div>
             <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">OS Type</label>
             <select value={form.os_type} onChange={e => set('os_type', e.target.value)} className={inputCls}>
-              {OS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {OS_OPTIONS.map(g => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </optgroup>
+              ))}
             </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Hostname / IP *</label>
+              <input value={form.hostname} onChange={e => set('hostname', e.target.value)} placeholder="192.168.1.100" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">VNC WebSocket Port</label>
+              <input type="number" value={form.vnc_port} onChange={e => set('vnc_port', e.target.value)} placeholder="6080" className={inputCls} />
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
