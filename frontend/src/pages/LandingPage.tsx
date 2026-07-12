@@ -1,257 +1,382 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-const features = [
+function HeroTerminal() {
+  return (
+    <div className="relative flex justify-center items-center py-8">
+      {/* Glow */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(59,130,246,0.13) 0%, transparent 80%)',
+        }}
+      />
+
+      {/* Terminal window */}
+      <div
+        className="relative z-10 w-full max-w-[480px] rounded-2xl overflow-hidden border border-white/8 shadow-2xl shadow-black/70"
+        style={{
+          background: '#0b1220',
+          transform: 'perspective(1100px) rotateY(-4deg) rotateX(2deg)',
+        }}
+      >
+        {/* Chrome bar */}
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/6" style={{ background: '#070d18' }}>
+          <span className="w-3 h-3 rounded-full" style={{ background: '#ff5f57' }} />
+          <span className="w-3 h-3 rounded-full" style={{ background: '#febc2e' }} />
+          <span className="w-3 h-3 rounded-full" style={{ background: '#28c840' }} />
+          <span className="font-mono text-xs text-slate-600 ml-3 select-none">web-prod-01 — bash</span>
+        </div>
+
+        {/* Terminal body */}
+        <div className="p-5 font-mono text-[13px] leading-relaxed space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-violet-400">❯</span>
+            <span className="text-slate-300">reemote connect web-prod-01</span>
+          </div>
+          <div className="flex items-center gap-2 text-emerald-400">
+            <span>✓</span>
+            <span>Session established &mdash; 41ms</span>
+          </div>
+
+          <div className="pt-3 text-[11px] text-slate-600">Last login: Fri Jul 11 08:22:14 from 10.0.0.1</div>
+
+          <div className="flex gap-2 pt-2">
+            <span className="text-cyan-400">root@web-prod-01</span>
+            <span className="text-slate-500">:~#</span>
+            <span className="text-slate-300">df -h /</span>
+          </div>
+          <div className="text-[11px] text-slate-400 pl-1 space-y-0.5">
+            <div className="grid grid-cols-4 gap-4">
+              <span className="text-slate-500">Filesystem</span>
+              <span className="text-slate-500">Size</span>
+              <span className="text-slate-500">Used</span>
+              <span className="text-slate-500">Avail</span>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              <span>/dev/sda1</span>
+              <span>200G</span>
+              <span className="text-amber-400">148G</span>
+              <span className="text-emerald-400">52G</span>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <span className="text-cyan-400">root@web-prod-01</span>
+            <span className="text-slate-500">:~#</span>
+            <span className="text-slate-300">systemctl status nginx</span>
+          </div>
+          <div className="text-[11px] pl-1 space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-400">●</span>
+              <span className="text-white">nginx.service</span>
+              <span className="text-slate-400">- A high performance web server</span>
+            </div>
+            <div className="text-slate-400 pl-4">Loaded: loaded (/lib/systemd/system/nginx.service)</div>
+            <div className="pl-4">
+              <span className="text-slate-400">Active: </span>
+              <span className="text-emerald-400">active (running)</span>
+              <span className="text-slate-500"> since 142 days ago</span>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <span className="text-cyan-400">root@web-prod-01</span>
+            <span className="text-slate-500">:~#</span>
+            <span className="text-white animate-pulse">▋</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating badge: fleet status */}
+      <div className="absolute top-4 right-0 z-20 flex items-center gap-3 rounded-xl border border-white/8 px-3.5 py-2.5 shadow-xl"
+           style={{ background: '#0e1e30', backdropFilter: 'blur(12px)' }}>
+        <div className="flex gap-1 items-center">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 pulse-dot" />
+          <span className="w-2 h-2 rounded-full bg-emerald-400 pulse-dot" style={{ animationDelay: '0.3s' }} />
+          <span className="w-2 h-2 rounded-full bg-slate-600" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-white leading-none">8 / 10 online</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Fleet nominal</p>
+        </div>
+      </div>
+
+      {/* Floating badge: encryption */}
+      <div className="absolute bottom-4 left-0 z-20 flex items-center gap-3 rounded-xl border border-white/8 px-3.5 py-2.5 shadow-xl"
+           style={{ background: '#0e1e30', backdropFilter: 'blur(12px)' }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+             style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)' }}>
+          🔐
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-white leading-none">AES-256 · TLS 1.3</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">End-to-end encrypted</p>
+        </div>
+      </div>
+
+      {/* Floating badge: latency */}
+      <div className="absolute top-1/2 -right-2 z-20 -translate-y-1/2 rounded-xl border px-3.5 py-3 shadow-xl text-center"
+           style={{ background: '#0e1e30', borderColor: 'rgba(16,185,129,0.25)', backdropFilter: 'blur(12px)' }}>
+        <p className="text-emerald-400 text-xl font-bold leading-none">41ms</p>
+        <p className="text-[10px] text-slate-400 mt-1">latency</p>
+      </div>
+    </div>
+  );
+}
+
+const FEATURES = [
   {
     icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 10V3L4 14h7v7l9-11h-7z" />
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
       </svg>
     ),
-    title: 'Instant Access',
-    desc: 'Connect to any VM in under a second directly from your browser. No downloads, no plugins, no friction.',
-    color: 'from-blue-500 to-cyan-500',
-    glow: 'shadow-blue-500/20',
+    gradient: 'from-blue-500 to-cyan-500',
+    shadow: 'rgba(59,130,246,0.25)',
+    title: 'Sub-50ms connections',
+    desc: 'Optimised WebSocket transport delivers a native-feel remote session from any browser, anywhere in the world.',
   },
   {
     icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
       </svg>
     ),
-    title: 'Zero-Trust Security',
-    desc: 'End-to-end encrypted sessions, TOTP two-factor auth, and per-user access controls on every VM.',
-    color: 'from-purple-500 to-violet-500',
-    glow: 'shadow-purple-500/20',
+    gradient: 'from-violet-500 to-purple-600',
+    shadow: 'rgba(139,92,246,0.25)',
+    title: 'Zero-trust security',
+    desc: 'JWT sessions with short expiry, TOTP two-factor auth, and per-user VM permissions baked in from day one.',
   },
   {
     icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
       </svg>
     ),
-    title: 'Live Monitoring',
-    desc: 'Real-time power state, CPU, RAM and disk metrics for every machine in your fleet at a glance.',
-    color: 'from-emerald-500 to-teal-500',
-    glow: 'shadow-emerald-500/20',
+    gradient: 'from-emerald-500 to-teal-500',
+    shadow: 'rgba(16,185,129,0.25)',
+    title: 'Live fleet monitoring',
+    desc: 'Real-time power state, CPU, RAM and disk across every machine in your fleet. Spot issues before users do.',
   },
   {
     icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
-    title: 'Team Management',
-    desc: 'Grant or revoke VM access per user, assign admin roles, and audit every action with full logs.',
-    color: 'from-amber-500 to-orange-500',
-    glow: 'shadow-amber-500/20',
+    gradient: 'from-amber-500 to-orange-500',
+    shadow: 'rgba(245,158,11,0.25)',
+    title: 'Granular access control',
+    desc: 'Invite teammates, assign admin roles, and grant or revoke VM access per user in seconds.',
   },
 ];
 
-const steps = [
-  { n: '01', title: 'Add your VMs', desc: 'Register your virtual machines with hostname, specs and credentials.' },
-  { n: '02', title: 'Invite your team', desc: 'Create user accounts and assign per-VM access permissions.' },
-  { n: '03', title: 'Connect anywhere', desc: 'Open a browser and securely access any permitted VM in one click.' },
-];
-
-const stats = [
-  { value: '< 1s', label: 'Connection time' },
-  { value: 'AES-256', label: 'Encryption' },
-  { value: '99.9%', label: 'Uptime SLA' },
-  { value: '2FA', label: 'Built-in auth' },
+const STEPS = [
+  {
+    n: '01',
+    title: 'Register your machines',
+    desc: 'Add each VM with its hostname, specs, and credentials. Takes 30 seconds per machine.',
+  },
+  {
+    n: '02',
+    title: 'Invite your team',
+    desc: 'Create user accounts and define exactly which VMs each person can access.',
+  },
+  {
+    n: '03',
+    title: 'Connect from anywhere',
+    desc: 'One click in the browser. No client, no VPN, no setup — just a secure session.',
+  },
 ];
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll);
+    const onScroll = () => setScrolled(window.scrollY > 32);
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#080d1a] text-white overflow-x-hidden">
+    <div className="min-h-screen text-white" style={{ background: '#050914' }}>
 
-      {/* ── Animated background orbs ── */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-blue-600/10 blur-[120px] animate-float" />
-        <div className="absolute top-[30%] right-[-15%] w-[600px] h-[600px] rounded-full bg-purple-600/8 blur-[120px] animate-float-delay" />
-        <div className="absolute bottom-[-10%] left-[30%] w-[500px] h-[500px] rounded-full bg-cyan-600/6 blur-[100px] animate-float-slow" />
-        {/* Subtle grid overlay */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }} />
+      {/* ── Ambient background ── */}
+      <div className="fixed inset-0 pointer-events-none select-none overflow-hidden">
+        <div className="absolute -top-48 -left-48 w-[900px] h-[900px] rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 65%)' }} />
+        <div className="absolute top-[40%] -right-64 w-[700px] h-[700px] rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 65%)' }} />
+        <div className="absolute bottom-0 left-[20%] w-[600px] h-[600px] rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 65%)' }} />
+        {/* Dot grid */}
+        <div className="absolute inset-0"
+             style={{
+               backgroundImage: 'radial-gradient(circle, rgba(148,163,184,0.18) 1px, transparent 1px)',
+               backgroundSize: '36px 36px',
+               opacity: 0.35,
+             }} />
       </div>
 
       {/* ── Navbar ── */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#080d1a]/90 backdrop-blur-xl border-b border-white/5' : ''}`}>
+      <header
+        className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
+        style={scrolled ? { background: 'rgba(5,9,20,0.92)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(255,255,255,0.05)' } : {}}
+      >
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg"
+                 style={{ background: 'linear-gradient(135deg, #3b82f6, #7c3aed)', boxShadow: '0 4px 16px rgba(59,130,246,0.35)' }}>
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
               </svg>
             </div>
-            <span className="font-bold text-lg tracking-tight">Reemote</span>
-          </div>
+            <span className="font-bold text-[17px] tracking-tight">Reemote</span>
+          </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm text-slate-400">
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
-            <a href="#security" className="hover:text-white transition-colors">Security</a>
+          <nav className="hidden md:flex items-center gap-8">
+            {['Features', 'How it works', 'Security'].map(l => (
+              <a key={l} href={`#${l.toLowerCase().replace(/ /g, '-')}`}
+                 className="text-sm text-slate-400 hover:text-white transition-colors duration-150">
+                {l}
+              </a>
+            ))}
           </nav>
 
-          <Link
-            to="/login"
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/25 hover:-translate-y-0.5"
-          >
-            Sign in
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/login" className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors px-1">
+              Sign in
+            </Link>
+            <Link
+              to="/login"
+              className="px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 hover:-translate-y-px"
+              style={{ background: '#fff', color: '#0f172a', boxShadow: '0 2px 12px rgba(255,255,255,0.12)' }}
+            >
+              Get started →
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 pt-16">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/8 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-8 animate-fade-in">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 pulse-dot" />
-          Enterprise VM Management Platform
-        </div>
+      <section className="relative min-h-screen flex items-center pt-16">
+        <div className="max-w-6xl mx-auto px-6 w-full py-20">
+          <div className="grid lg:grid-cols-2 gap-12 xl:gap-20 items-center">
 
-        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] mb-6 animate-slide-in" style={{ animationDelay: '0.05s' }}>
-          Remote desktop access,{' '}
-          <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent">
-            without the hassle
-          </span>
-        </h1>
-
-        <p className="text-lg sm:text-xl text-slate-400 max-w-2xl leading-relaxed mb-10 animate-slide-in" style={{ animationDelay: '0.1s' }}>
-          Reemote gives your team instant, browser-based access to every virtual machine in your fleet — secured with zero-trust auth and real-time monitoring.
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-in" style={{ animationDelay: '0.15s' }}>
-          <Link
-            to="/login"
-            className="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold rounded-2xl transition-all duration-300 shadow-xl shadow-blue-600/30 hover:-translate-y-1 hover:shadow-blue-500/40 text-sm"
-          >
-            Get started free
-          </Link>
-          <a
-            href="#features"
-            className="px-8 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-2xl transition-all duration-200 text-sm"
-          >
-            See features
-          </a>
-        </div>
-
-        {/* Dashboard preview mockup */}
-        <div className="relative mt-20 w-full max-w-4xl mx-auto animate-slide-in" style={{ animationDelay: '0.25s' }}>
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#080d1a] z-10 pointer-events-none" style={{ top: '60%' }} />
-          <div className="rounded-2xl border border-white/10 bg-[#0c1425]/80 backdrop-blur-sm overflow-hidden shadow-2xl shadow-black/50">
-            {/* Browser chrome */}
-            <div className="flex items-center gap-2 px-4 py-3 bg-[#0a1020] border-b border-white/5">
-              <span className="w-3 h-3 rounded-full bg-red-500/70" />
-              <span className="w-3 h-3 rounded-full bg-amber-500/70" />
-              <span className="w-3 h-3 rounded-full bg-emerald-500/70" />
-              <div className="flex-1 mx-4 h-6 bg-white/5 rounded-lg flex items-center px-3">
-                <span className="text-xs text-slate-500">reemote.vercel.app/dashboard</span>
+            {/* Left: copy */}
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium mb-8 border"
+                   style={{ background: 'rgba(59,130,246,0.08)', borderColor: 'rgba(59,130,246,0.22)', color: '#93c5fd' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 pulse-dot" />
+                Secure browser-based remote access
               </div>
-            </div>
 
-            {/* Fake dashboard */}
-            <div className="flex">
-              {/* Sidebar */}
-              <div className="w-48 bg-[#080d1a]/80 border-r border-white/5 p-3 hidden sm:block">
-                <div className="flex items-center gap-2 mb-5 px-2 pt-1">
-                  <div className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-purple-600" />
-                  <span className="text-xs font-bold">Reemote</span>
-                </div>
-                {['Dashboard', 'Settings'].map((item, i) => (
-                  <div key={item} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg mb-1 text-xs ${i === 0 ? 'bg-blue-600/15 text-blue-400' : 'text-slate-500'}`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${i === 0 ? 'bg-blue-400' : 'bg-slate-600'}`} />
-                    {item}
+              <h1 className="text-[3.2rem] sm:text-[3.8rem] lg:text-[4.2rem] font-extrabold tracking-tight leading-[1.04] mb-6">
+                Your VM fleet,{' '}
+                <br className="hidden sm:block" />
+                <span style={{
+                  background: 'linear-gradient(90deg, #60a5fa 0%, #22d3ee 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}>
+                  one click away
+                </span>
+              </h1>
+
+              <p className="text-[1.05rem] leading-relaxed mb-10 max-w-[480px]" style={{ color: '#94a3b8' }}>
+                Reemote gives your team instant remote desktop access to every virtual machine — directly from the browser. No client software, no VPN, no hassle.
+              </p>
+
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 text-sm font-semibold rounded-xl text-white transition-all duration-200 hover:-translate-y-0.5"
+                  style={{
+                    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    boxShadow: '0 4px 20px rgba(37,99,235,0.45)',
+                  }}
+                >
+                  Start for free
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+                <a
+                  href="#how-it-works"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 text-sm font-semibold rounded-xl transition-all duration-200 hover:bg-white/8"
+                  style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#cbd5e1' }}
+                >
+                  How it works
+                </a>
+              </div>
+
+              {/* Stats row */}
+              <div className="flex items-center gap-8 mt-12 pt-10" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                {[
+                  { val: '< 50ms', lbl: 'avg session latency' },
+                  { val: 'AES-256', lbl: 'end-to-end encryption' },
+                  { val: '99.9%', lbl: 'uptime guarantee' },
+                ].map(s => (
+                  <div key={s.val}>
+                    <p className="text-[1.1rem] font-bold text-white leading-none">{s.val}</p>
+                    <p className="text-[11px] mt-1" style={{ color: '#64748b' }}>{s.lbl}</p>
                   </div>
                 ))}
               </div>
+            </div>
 
-              {/* Main area */}
-              <div className="flex-1 p-4">
-                {/* Stat cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                  {[
-                    { label: 'Total VMs', val: '12', color: 'from-blue-600 to-blue-500' },
-                    { label: 'Running', val: '8', color: 'from-emerald-600 to-emerald-500' },
-                    { label: 'Stopped', val: '4', color: 'from-slate-700 to-slate-600' },
-                    { label: 'Total RAM', val: '96 GB', color: 'from-purple-600 to-purple-500' },
-                  ].map(c => (
-                    <div key={c.label} className={`bg-gradient-to-br ${c.color} rounded-xl p-3`}>
-                      <p className="text-[10px] text-white/60">{c.label}</p>
-                      <p className="text-lg font-bold text-white">{c.val}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* VM list */}
-                <div className="space-y-2">
-                  {[
-                    { name: 'web-prod-01', state: 'running', cpu: '4', ram: '8 GB' },
-                    { name: 'db-primary', state: 'running', cpu: '8', ram: '32 GB' },
-                    { name: 'staging-01', state: 'stopped', cpu: '2', ram: '4 GB' },
-                  ].map(vm => (
-                    <div key={vm.name} className="flex items-center justify-between bg-white/3 rounded-xl px-3 py-2.5 border border-white/5">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full ${vm.state === 'running' ? 'bg-emerald-400 pulse-dot' : 'bg-slate-500'}`} />
-                        <span className="text-xs font-medium text-slate-200">{vm.name}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-[10px] text-slate-500">
-                        <span>{vm.cpu} CPU</span>
-                        <span>{vm.ram}</span>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${vm.state === 'running' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/15 text-slate-400'}`}>
-                          {vm.state}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {/* Right: terminal visual */}
+            <div className="hidden lg:block">
+              <HeroTerminal />
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ── Stats bar ── */}
-      <section className="relative py-16 px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-          {stats.map(s => (
-            <div key={s.label} className="text-center">
-              <p className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">{s.value}</p>
-              <p className="text-sm text-slate-500 mt-1">{s.label}</p>
-            </div>
-          ))}
         </div>
       </section>
 
       {/* ── Features ── */}
-      <section id="features" className="relative py-24 px-6">
+      <section id="features" className="relative py-28 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-blue-400 mb-3">Features</p>
-            <h2 className="text-3xl sm:text-4xl font-bold">Everything your team needs</h2>
-            <p className="text-slate-400 mt-4 max-w-xl mx-auto text-sm leading-relaxed">
-              Built for teams who need reliable, secure remote access without the overhead of traditional VPN or RDP infrastructure.
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#60a5fa' }}>Features</p>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Everything your team needs</h2>
+            <p className="text-[15px] max-w-lg mx-auto leading-relaxed" style={{ color: '#64748b' }}>
+              Built for infrastructure teams who need reliable, secure remote access without the baggage.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {features.map(f => (
-              <div key={f.title} className={`group relative p-6 rounded-2xl border border-white/8 bg-white/3 hover:bg-white/5 hover:border-white/15 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${f.glow}`}>
-                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center text-white mb-4 shadow-lg`}>
-                  {f.icon}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {FEATURES.map(f => (
+              <div
+                key={f.title}
+                className="group rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 cursor-default"
+                style={{
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = `0 16px 40px ${f.shadow}`;
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.025)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                }}
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white mb-4"
+                  style={{ background: `linear-gradient(135deg, var(--tw-gradient-stops))`, boxShadow: `0 4px 12px ${f.shadow}` }}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${f.gradient}`}>
+                    {f.icon}
+                  </div>
                 </div>
                 <h3 className="font-semibold text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
+                <p className="text-sm leading-relaxed" style={{ color: '#64748b' }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -259,69 +384,147 @@ export default function LandingPage() {
       </section>
 
       {/* ── How it works ── */}
-      <section id="how-it-works" className="relative py-24 px-6">
+      <section id="how-it-works" className="relative py-28 px-6">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-purple-400 mb-3">How it works</p>
-            <h2 className="text-3xl sm:text-4xl font-bold">Up and running in minutes</h2>
-          </div>
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {steps.map((s, i) => (
-              <div key={s.n} className="relative flex flex-col items-start">
-                {/* Connector line */}
-                {i < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-6 left-[calc(100%+1rem)] right-0 h-px bg-gradient-to-r from-white/10 to-transparent w-[calc(100%-2rem)]" style={{ width: 'calc(100% - 1.5rem)', left: 'calc(100% + 0.5rem)' }} />
-                )}
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600/30 to-purple-600/20 border border-white/10 flex items-center justify-center mb-5">
-                  <span className="text-sm font-bold text-blue-300">{s.n}</span>
-                </div>
-                <h3 className="font-semibold text-white mb-2">{s.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{s.desc}</p>
+            {/* Left: steps */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#a78bfa' }}>How it works</p>
+              <h2 className="text-3xl sm:text-4xl font-bold mb-3">Up and running in minutes</h2>
+              <p className="text-[15px] mb-10 leading-relaxed" style={{ color: '#64748b' }}>
+                No complex setup. No networking changes. Just register, invite, connect.
+              </p>
+
+              <div className="space-y-8">
+                {STEPS.map((s, i) => (
+                  <div key={s.n} className="flex gap-5">
+                    <div className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm"
+                         style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)', color: '#c4b5fd' }}>
+                      {s.n}
+                    </div>
+                    <div className="pt-1">
+                      <h3 className="font-semibold text-white mb-1">{s.title}</h3>
+                      <p className="text-sm leading-relaxed" style={{ color: '#64748b' }}>{s.desc}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 mt-10 px-6 py-3.5 text-sm font-semibold rounded-xl text-white transition-all duration-200 hover:-translate-y-0.5"
+                style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow: '0 4px 20px rgba(37,99,235,0.4)' }}
+              >
+                Get started now
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </Link>
+            </div>
+
+            {/* Right: VM list graphic */}
+            <div className="hidden lg:block rounded-2xl overflow-hidden border"
+                 style={{ background: '#0b1220', borderColor: 'rgba(255,255,255,0.07)' }}>
+              {/* Header bar */}
+              <div className="flex items-center justify-between px-5 py-4 border-b"
+                   style={{ borderColor: 'rgba(255,255,255,0.05)', background: '#070d18' }}>
+                <span className="text-sm font-semibold text-white">Virtual Machines</span>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: 'rgba(16,185,129,0.12)', color: '#34d399', border: '1px solid rgba(16,185,129,0.2)' }}>
+                  8 running
+                </span>
+              </div>
+
+              {/* VM rows */}
+              <div className="divide-y" style={{ divideColor: 'rgba(255,255,255,0.04)' }}>
+                {[
+                  { name: 'web-prod-01', host: '10.0.1.10', cpu: 4, ram: '8 GB', state: 'running' },
+                  { name: 'db-primary',  host: '10.0.1.20', cpu: 8, ram: '32 GB', state: 'running' },
+                  { name: 'api-server',  host: '10.0.1.30', cpu: 4, ram: '16 GB', state: 'running' },
+                  { name: 'staging-01',  host: '10.0.2.10', cpu: 2, ram: '4 GB',  state: 'stopped' },
+                  { name: 'dev-box',     host: '10.0.2.20', cpu: 2, ram: '8 GB',  state: 'stopped' },
+                ].map(vm => (
+                  <div key={vm.name} className="flex items-center justify-between px-5 py-3.5 group transition-colors"
+                       style={{ borderColor: 'rgba(255,255,255,0.04)' }}
+                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.025)'}
+                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                    <div className="flex items-center gap-3">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${vm.state === 'running' ? 'bg-emerald-400 pulse-dot' : 'bg-slate-600'}`} />
+                      <div>
+                        <p className="text-sm font-medium text-white">{vm.name}</p>
+                        <p className="text-[11px]" style={{ color: '#475569' }}>{vm.host}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-[11px]" style={{ color: '#475569' }}>
+                      <span>{vm.cpu} CPU</span>
+                      <span>{vm.ram}</span>
+                      <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${vm.state === 'running' ? 'text-emerald-400' : 'text-slate-500'}`}
+                            style={{ background: vm.state === 'running' ? 'rgba(16,185,129,0.1)' : 'rgba(100,116,139,0.1)' }}>
+                        {vm.state}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Connect button area */}
+              <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: '#475569' }}>Click any machine to connect</span>
+                  <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#60a5fa' }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 pulse-dot" />
+                    Live
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Security section ── */}
-      <section id="security" className="relative py-24 px-6">
+      {/* ── Security ── */}
+      <section id="security" className="relative py-28 px-6">
         <div className="max-w-5xl mx-auto">
-          <div className="rounded-3xl border border-white/8 bg-gradient-to-br from-[#0c1425] to-[#0a0f1e] p-10 md:p-14 overflow-hidden relative">
-            {/* Glow */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/8 rounded-full blur-[100px] pointer-events-none" />
+          <div
+            className="rounded-3xl p-10 md:p-14 relative overflow-hidden"
+            style={{ background: '#0b1220', border: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            {/* Glow accent */}
+            <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full pointer-events-none"
+                 style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)' }} />
 
-            <div className="relative grid md:grid-cols-2 gap-12 items-center">
+            <div className="relative grid md:grid-cols-2 gap-12 items-start">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-3">Security</p>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#34d399' }}>Security</p>
                 <h2 className="text-3xl sm:text-4xl font-bold mb-5">Enterprise-grade, out of the box</h2>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8">
-                  Every session is encrypted end-to-end. Access is gated by JWT tokens with short expiry, 2FA on every account, and full audit logs for compliance.
+                <p className="text-[15px] leading-relaxed mb-8" style={{ color: '#64748b' }}>
+                  Security isn't a feature — it's the foundation. Every session, every user, every machine is protected by default.
                 </p>
                 <Link
                   to="/login"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-white/8 hover:bg-white/12 border border-white/10 rounded-xl text-sm font-semibold transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold rounded-xl transition-all duration-200 hover:bg-white/10"
+                  style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0' }}
                 >
-                  Start securing your fleet
+                  Secure your fleet
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
                 </Link>
               </div>
 
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { icon: '🔐', title: 'End-to-end encryption', desc: 'All VNC traffic encrypted with AES-256 in transit' },
-                  { icon: '📱', title: 'TOTP Two-factor auth', desc: 'Google Authenticator & any TOTP-compatible app' },
-                  { icon: '📋', title: 'Full audit logs', desc: 'Every login, access and action logged with timestamps' },
-                  { icon: '👤', title: 'Granular permissions', desc: 'Per-user, per-VM access control with admin roles' },
+                  { icon: '🔒', title: 'AES-256 encryption', desc: 'All traffic encrypted in transit, every session.' },
+                  { icon: '📱', title: 'TOTP 2FA', desc: 'Google Authenticator or any TOTP app supported.' },
+                  { icon: '🗝️', title: 'Short-lived tokens', desc: 'JWT sessions expire quickly, reducing exposure.' },
+                  { icon: '📋', title: 'Audit logs', desc: 'Every login and access event recorded with timestamps.' },
                 ].map(item => (
-                  <div key={item.title} className="flex items-start gap-4 p-4 rounded-xl bg-white/3 border border-white/5">
-                    <span className="text-xl flex-shrink-0">{item.icon}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-white">{item.title}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
-                    </div>
+                  <div key={item.title} className="rounded-xl p-4"
+                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span className="text-2xl mb-3 block">{item.icon}</span>
+                    <p className="text-sm font-semibold text-white mb-1">{item.title}</p>
+                    <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>{item.desc}</p>
                   </div>
                 ))}
               </div>
@@ -331,41 +534,61 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="relative py-24 px-6 text-center">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-5">
-            Ready to take control?
-          </h2>
-          <p className="text-slate-400 text-sm mb-10 leading-relaxed">
-            Get your team connected to every VM in minutes. No infrastructure changes needed.
-          </p>
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-2xl transition-all duration-300 shadow-2xl shadow-blue-600/30 hover:-translate-y-1 hover:shadow-blue-500/40"
+      <section className="relative py-28 px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <div
+            className="rounded-3xl px-10 py-16 relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, rgba(37,99,235,0.2) 0%, rgba(124,58,237,0.15) 100%)',
+              border: '1px solid rgba(59,130,246,0.2)',
+            }}
           >
-            Get started
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </Link>
+            <div className="absolute inset-0 pointer-events-none"
+                 style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(59,130,246,0.15) 0%, transparent 70%)' }} />
+            <div className="relative">
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-5">
+                Ready to connect?
+              </h2>
+              <p className="text-[15px] leading-relaxed mb-10 max-w-lg mx-auto" style={{ color: '#94a3b8' }}>
+                Get your entire team accessing VMs securely from their browsers in under 10 minutes.
+              </p>
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 px-8 py-4 text-[15px] font-bold rounded-2xl text-white transition-all duration-200 hover:-translate-y-0.5"
+                style={{
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  boxShadow: '0 6px 28px rgba(37,99,235,0.5)',
+                }}
+              >
+                Get started free
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="relative border-t border-white/5 py-10 px-6">
+      <footer className="relative py-10 px-6" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                 style={{ background: 'linear-gradient(135deg, #3b82f6, #7c3aed)' }}>
               <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
               </svg>
             </div>
             <span className="font-semibold text-sm">Reemote</span>
-            <span className="text-slate-600 text-xs ml-2">© {new Date().getFullYear()} Belloite Ltd. All rights reserved.</span>
+            <span className="text-xs ml-2" style={{ color: '#334155' }}>
+              © {new Date().getFullYear()} Belloite Ltd
+            </span>
           </div>
-          <div className="flex items-center gap-6 text-xs text-slate-500">
+          <div className="flex items-center gap-6 text-xs" style={{ color: '#475569' }}>
             <a href="#features" className="hover:text-white transition-colors">Features</a>
             <a href="#security" className="hover:text-white transition-colors">Security</a>
+            <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
             <Link to="/login" className="hover:text-white transition-colors">Sign in</Link>
           </div>
         </div>
