@@ -8,12 +8,6 @@
       "maxDuration": 30
     }
   },
-  "redirects": [
-    {
-      "source": "/api/v1/:path*",
-      "destination": "/api/v1/:path*"
-    }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",
