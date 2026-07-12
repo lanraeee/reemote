@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../stores/auth';
 import apiClient from '../services/api';
 
@@ -7,6 +7,7 @@ const TABS = [
   { id: 'security',    label: 'Security',    icon: '🔐' },
   { id: 'preferences', label: 'Preferences', icon: '⚙️' },
   { id: 'email',       label: 'Email Tools', icon: '✉️' },
+  { id: 'containers',  label: 'Containers',  icon: '🐳', adminOnly: true },
 ];
 
 function SectionCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -249,10 +250,229 @@ function EmailToolsPanel({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+type ContainerInfo = {
+  id: string;
+  fullId: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  vmId: string;
+  osType: string;
+  vncPort: number | null;
+};
+
+function ContainersPanel() {
+  const [containers, setContainers] = useState<ContainerInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [provisionVmId, setProvisionVmId] = useState('');
+  const [provisionPassword, setProvisionPassword] = useState('reemote');
+  const [provisioning, setProvisioning] = useState(false);
+  const [provisionResult, setProvisionResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const fetchContainers = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await apiClient.get('/admin/containers');
+      setContainers(res.data.containers || []);
+    } catch (err: any) {
+      if (err?.response?.status === 500 && err?.response?.data?.error?.includes('connect ENOENT')) {
+        setError('Docker socket not available — Reemote Connect must be running as a Docker container with the Docker socket mounted.');
+      } else {
+        setError(err?.response?.data?.error || 'Failed to load containers');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchContainers(); }, [fetchContainers]);
+
+  async function handleContainerAction(containerId: string, action: 'start' | 'stop') {
+    setActionId(containerId);
+    try {
+      await apiClient.post(`/admin/containers?containerId=${containerId}&action=${action}`);
+      await fetchContainers();
+    } catch (err: any) {
+      alert(err?.response?.data?.error || `Failed to ${action} container`);
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleRemove(containerId: string) {
+    if (!confirm('Remove this container? All data inside will be lost.')) return;
+    setActionId(containerId);
+    try {
+      await apiClient.delete(`/admin/containers?containerId=${containerId}`);
+      await fetchContainers();
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to remove container');
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleProvision(e: React.FormEvent) {
+    e.preventDefault();
+    if (!provisionVmId.trim()) return;
+    setProvisioning(true);
+    setProvisionResult(null);
+    try {
+      const res = await apiClient.post('/admin/containers', { vmId: provisionVmId.trim(), vncPassword: provisionPassword });
+      setProvisionResult({ success: true, message: `Container provisioned — websockify port ${res.data.hostPort}` });
+      setProvisionVmId('');
+      setProvisionPassword('reemote');
+      await fetchContainers();
+    } catch (err: any) {
+      setProvisionResult({ success: false, message: err?.response?.data?.error || 'Provisioning failed' });
+    } finally {
+      setProvisioning(false);
+    }
+  }
+
+  const stateColor: Record<string, string> = {
+    running: 'bg-emerald-400',
+    exited:  'bg-slate-400',
+    paused:  'bg-amber-400',
+    created: 'bg-blue-400',
+  };
+
+  return (
+    <div className="space-y-5 animate-slide-in">
+      <SectionCard
+        title="OS Containers"
+        icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" /></svg>}
+      >
+        {loading ? (
+          <div className="flex items-center gap-3 text-sm text-slate-500 py-4">
+            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+            Loading containers…
+          </div>
+        ) : error ? (
+          <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">{error}</div>
+        ) : containers.length === 0 ? (
+          <p className="text-sm text-slate-400 py-2">No OS containers running. Provision one below.</p>
+        ) : (
+          <div className="space-y-2">
+            {containers.map(c => (
+              <div key={c.fullId} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${stateColor[c.state] || 'bg-slate-300'}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">{c.name}</p>
+                  <p className="text-xs text-slate-400 truncate">{c.osType} — {c.status}{c.vncPort ? ` — ws port ${c.vncPort}` : ''}</p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {c.state === 'running' ? (
+                    <button
+                      onClick={() => handleContainerAction(c.id, 'stop')}
+                      disabled={actionId === c.id}
+                      className="px-2.5 py-1 text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg font-medium transition-colors disabled:opacity-50"
+                    >
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleContainerAction(c.id, 'start')}
+                      disabled={actionId === c.id}
+                      className="px-2.5 py-1 text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg font-medium transition-colors disabled:opacity-50"
+                    >
+                      Start
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleRemove(c.id)}
+                    disabled={actionId === c.id}
+                    className="px-2.5 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={fetchContainers}
+          className="mt-4 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+        >
+          Refresh list
+        </button>
+      </SectionCard>
+
+      <SectionCard
+        title="Provision Container"
+        icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>}
+      >
+        <p className="text-xs text-slate-500 mb-4">
+          Provision a Docker OS container for a VM. The VM's OS type determines the image used.
+          The container's websockify port will be stored as the VM's VNC port.
+        </p>
+        <form onSubmit={handleProvision} className="space-y-4">
+          <Field label="VM ID">
+            <input
+              type="text"
+              value={provisionVmId}
+              onChange={e => setProvisionVmId(e.target.value)}
+              placeholder="Paste the VM's UUID from the dashboard"
+              className={inputCls}
+              required
+            />
+          </Field>
+          <Field label="VNC Password" hint="Password users will use to authenticate to the VNC session.">
+            <input
+              type="text"
+              value={provisionPassword}
+              onChange={e => setProvisionPassword(e.target.value)}
+              placeholder="reemote"
+              className={inputCls}
+            />
+          </Field>
+
+          {provisionResult && (
+            <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${provisionResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+              {provisionResult.message}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={provisioning || !provisionVmId.trim()}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-600/20"
+          >
+            {provisioning ? 'Provisioning…' : 'Provision container'}
+          </button>
+        </form>
+      </SectionCard>
+
+      <SectionCard
+        title="Build OS Images"
+        icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
+      >
+        <p className="text-xs text-slate-500 mb-3">
+          Run this on the Reemote Connect server to build all OS images before provisioning containers.
+        </p>
+        <pre className="bg-slate-900 text-emerald-400 text-xs rounded-xl px-4 py-3 overflow-x-auto font-mono">
+          docker compose run --rm os-builder
+        </pre>
+        <p className="text-xs text-slate-400 mt-2">
+          Images: Ubuntu 22.04, Ubuntu 20.04, Debian 12, CentOS 9 (AlmaLinux), Fedora 39, Alpine 3
+        </p>
+      </SectionCard>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('profile');
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? 'RM';
+
+  const visibleTabs = TABS.filter((t: any) => !t.adminOnly || user?.isAdmin);
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -264,8 +484,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab pills */}
-      <div className="flex gap-1.5 p-1.5 bg-slate-100 rounded-xl w-fit">
-        {TABS.map(t => (
+      <div className="flex flex-wrap gap-1.5 p-1.5 bg-slate-100 rounded-xl w-fit">
+        {visibleTabs.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
@@ -428,6 +648,11 @@ export default function SettingsPage() {
       {/* Email Tools */}
       {activeTab === 'email' && (
         <EmailToolsPanel isAdmin={user?.isAdmin ?? false} />
+      )}
+
+      {/* Containers — admin only */}
+      {activeTab === 'containers' && user?.isAdmin && (
+        <ContainersPanel />
       )}
     </div>
   );

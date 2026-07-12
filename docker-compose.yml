@@ -1,50 +1,107 @@
 version: '3.8'
 
+# Reemote Connect — self-hosted deployment
+# Usage: cp .env.docker.example .env && docker compose up -d
+
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: reemote-postgres
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: reemote-db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: reemote
-      POSTGRES_PASSWORD: reemote
-      POSTGRES_DB: reemote
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${DB_USER:-reemote}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${DB_NAME:-reemote}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U reemote"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-reemote} -d ${DB_NAME:-reemote}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 15s
+    networks:
+      - reemote-net
 
-  backend:
+  # ── Node.js API server ───────────────────────────────────────────────────────
+  api:
     build:
       context: .
-      dockerfile: backend/Dockerfile
-    container_name: reemote-backend
+      dockerfile: server/Dockerfile
+    container_name: reemote-api
+    restart: unless-stopped
     environment:
-      SERVER_PORT: 8443
-      SERVER_HOST: 0.0.0.0
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: reemote
-      DB_PASSWORD: reemote
-      DB_NAME: reemote
-      DB_SSL_MODE: disable
-      JWT_SECRET: dev-secret-key-min-32-chars-long-change-this
-      ENCRYPTION_KEY: dev-encryption-key-min-32-chars-long-change-this
-      LOG_LEVEL: debug
-      ENV: development
-      REQUIRE_TLS: "false"
-    ports:
-      - "8443:8443"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      PORT: 8443
+      DATABASE_URL: postgresql://${DB_USER:-reemote}:${DB_PASSWORD}@db:5432/${DB_NAME:-reemote}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Reemote <noreply@reemote.app>}
+      DOCKER_SOCKET: /var/run/docker.sock
+      NODE_ENV: production
     volumes:
-      - ./backend:/app/backend
-    command: ./reemote-server
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - frontend_build:/app/frontend/dist:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - reemote-net
+    labels:
+      reemote.service: api
+
+  # ── Frontend (nginx) ─────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: reemote-frontend
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      - api
+    networks:
+      - reemote-net
+    volumes:
+      - frontend_build:/usr/share/nginx/html:rw
+    labels:
+      reemote.service: frontend
+
+  # ── OS image builder (one-shot) ──────────────────────────────────────────────
+  # Run: docker compose run --rm os-builder
+  os-builder:
+    image: docker:24-cli
+    container_name: reemote-os-builder
+    profiles: ["build-os"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/os:/workspace/os:ro
+    working_dir: /workspace
+    command: sh -c "
+      echo '>>> Building OS container images...' &&
+      docker build -t reemote-os/ubuntu-2204:latest  os/ubuntu-2204  &&
+      docker build -t reemote-os/debian-12:latest    os/debian-12    &&
+      docker build -t reemote-os/centos-9:latest     os/centos-9     &&
+      docker build -t reemote-os/alpine-3:latest     os/alpine-3     &&
+      docker build -t reemote-os/fedora-39:latest    os/fedora-39    &&
+      echo '>>> All OS images built successfully.'
+    "
+
+# ── OS containers are created dynamically by the API ────────────────────────
+# They attach to the reemote-os-net network automatically.
+
+networks:
+  reemote-net:
+    driver: bridge
+  reemote-os-net:
+    name: reemote-os-net
+    driver: bridge
 
 volumes:
-  postgres_data:
+  db_data:
+  frontend_build:

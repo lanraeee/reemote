@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.api.json",
+  "compilerOptions": {
+    "outDir": "./dist-server",
+    "rootDir": ".",
+    "strict": false
+  },
+  "include": ["api/**/*", "server/**/*"],
+  "exclude": ["node_modules", "frontend", "backend"]
+}

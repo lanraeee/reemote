@@ -6,7 +6,7 @@ export async function getConnection(): Promise<PoolClient> {
   if (!pool) {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL || process.env.reemotedb_DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
+      ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false },
       max: 5,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
